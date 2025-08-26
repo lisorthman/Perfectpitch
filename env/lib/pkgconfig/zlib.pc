@@ -1,0 +1,13 @@
+prefix=/Users/lisorthman/Desktop/Perfect Pitch/env
+exec_prefix=/Users/lisorthman/Desktop/Perfect Pitch/env
+libdir=/Users/lisorthman/Desktop/Perfect Pitch/env/lib
+sharedlibdir=/Users/lisorthman/Desktop/Perfect Pitch/env/lib
+includedir=/Users/lisorthman/Desktop/Perfect Pitch/env/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.13
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}
