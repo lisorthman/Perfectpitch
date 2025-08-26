@@ -1,0 +1,8 @@
+# Python virtual environment
+env/
+
+# Node modules
+node_modules/
+
+# macOS system files
+.DS_Store
