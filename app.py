@@ -25,6 +25,8 @@ except Exception as e:
 # Custom CSS for better styling
 st.markdown("""
 <style>
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+    
     .main-header {
         font-size: 3rem;
         font-weight: bold;
@@ -41,7 +43,6 @@ st.markdown("""
         font-size: 1.2rem;
         margin-bottom: 3rem;
     }
-    
     
     .movie-title {
         font-weight: bold;
@@ -116,6 +117,15 @@ st.markdown("""
         font-size: 0.9rem;
         opacity: 0.9;
     }
+    
+    .icon {
+        margin-right: 8px;
+    }
+    
+    .icon-container {
+        display: inline-block;
+        margin-right: 8px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -180,23 +190,23 @@ def main():
         return
     
     # Header
-    st.markdown('<h1 class="main-header">🎬 Perfect Pitch</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header"><i class="fas fa-film"></i> Perfect Pitch</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Discover your next favorite movie with AI-powered recommendations</p>', unsafe_allow_html=True)
     
     # Statistics
     st.markdown('<div class="stats-container">', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown('<div class="stat-item"><div class="stat-number">{}</div><div class="stat-label">Movies</div></div>'.format(len(movies)), unsafe_allow_html=True)
+        st.markdown('<div class="stat-item"><div class="stat-number">{}</div><div class="stat-label"><i class="fas fa-film icon"></i>Movies</div></div>'.format(len(movies)), unsafe_allow_html=True)
     with col2:
-        st.markdown('<div class="stat-item"><div class="stat-number">5</div><div class="stat-label">Recommendations</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-item"><div class="stat-number">5</div><div class="stat-label"><i class="fas fa-star icon"></i>Recommendations</div></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown('<div class="stat-item"><div class="stat-number">AI</div><div class="stat-label">Powered</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-item"><div class="stat-number">AI</div><div class="stat-label"><i class="fas fa-robot icon"></i>Powered</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Movie selection
     st.markdown('<div class="selectbox-container">', unsafe_allow_html=True)
-    st.markdown("### 🎯 Select a Movie")
+    st.markdown("### <span class='icon-container'><i class='fas fa-bullseye icon'></i></span>Select a Movie", unsafe_allow_html=True)
     st.markdown("Choose a movie you love, and we'll find similar ones you might enjoy!")
     
     movie_list = movies['title'].values
@@ -207,21 +217,19 @@ def main():
         help="Start typing to search through our movie database"
     )
     
-    if st.button('🎬 Get Recommendations', key='recommend_btn'):
+    if st.button('Get Recommendations', key='recommend_btn'):
         st.markdown('</div>', unsafe_allow_html=True)
         
-        with st.spinner('🎭 Finding the perfect movies for you...'):
+        with st.spinner('Finding the perfect movies for you...'):
             recommended_movies = recommend(selected_movie)
         
         if recommended_movies:
-            st.markdown('<h2 class="recommendations-header">🎉 Here are your recommendations!</h2>', unsafe_allow_html=True)
+            st.markdown('<h2 class="recommendations-header"><i class="fas fa-trophy icon"></i> Here are your recommendations!</h2>', unsafe_allow_html=True)
             
             # Display recommendations in a grid
             cols = st.columns(5)
             for idx, movie in enumerate(recommended_movies):
                 with cols[idx]:
-                    st.markdown('<div class="movie-card">', unsafe_allow_html=True)
-                    
                     # Movie poster
                     if movie['details']['poster']:
                         st.image(movie['details']['poster'], use_container_width=True, caption="")
@@ -233,22 +241,20 @@ def main():
                     
                     # Rating
                     if movie['details']['rating'] != 'N/A':
-                        st.markdown(f"⭐ **{movie['details']['rating']}/10**")
+                        st.markdown(f"<i class='fas fa-star icon'></i> **{movie['details']['rating']}/10**", unsafe_allow_html=True)
                     
                     # Similarity score
                     similarity_percent = round(movie['similarity_score'] * 100, 1)
-                    st.markdown(f"🎯 **{similarity_percent}%** similar")
+                    st.markdown(f"<i class='fas fa-bullseye icon'></i> **{similarity_percent}%** similar", unsafe_allow_html=True)
                     
                     # Genres
                     if movie['details']['genres']:
                         genres_text = ", ".join(movie['details']['genres'][:3])
-                        st.markdown(f"🎭 {genres_text}")
+                        st.markdown(f"<i class='fas fa-tags icon'></i> {genres_text}", unsafe_allow_html=True)
                     
                     # Release date
                     if movie['details']['release_date'] != 'Unknown':
-                        st.markdown(f"📅 {movie['details']['release_date'][:4]}")
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
+                        st.markdown(f"<i class='fas fa-calendar-alt icon'></i> {movie['details']['release_date'][:4]}", unsafe_allow_html=True)
         else:
             st.warning("No recommendations found. Please try another movie.")
     else:
@@ -258,7 +264,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666; padding: 2rem;'>
-        <p>🎬 Perfect Pitch - AI Movie Recommendations</p>
+        <p><i class="fas fa-film"></i> Perfect Pitch - AI Movie Recommendations</p>
         <p>Powered by Machine Learning & The Movie Database API</p>
     </div>
     """, unsafe_allow_html=True)
