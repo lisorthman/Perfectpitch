@@ -80,7 +80,7 @@ streamlit run src/app.py
 1. Movie dataset is preprocessed:
 
    * Tags are lowercased and stemmed using **PorterStemmer**.
-2. Text is converted into vectors using **CountVectorizer** or **TF-IDF Vectorizer**.
+2. Text is converted into vectors using **CountVectorizer**.
 3. **Cosine Similarity** is calculated between movies.
 4. Recommendations are generated based on the most similar movies.
 
