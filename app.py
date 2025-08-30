@@ -17,10 +17,13 @@ st.set_page_config(
 try:
     movies = pickle.load(open('artifacts/movie_list.pkl', 'rb'))
     similarity = pickle.load(open('artifacts/similarity.pkl', 'rb'))
+    # Load the full movies data for detailed information
+    full_movies = pickle.load(open('artifacts/full_movies.pkl', 'rb'))
 except Exception as e:
     st.error(f"Error loading movie data: {str(e)}")
     movies = None
     similarity = None
+    full_movies = None
 
 # Custom CSS for better styling
 st.markdown("""
@@ -126,6 +129,61 @@ st.markdown("""
         display: inline-block;
         margin-right: 8px;
     }
+    
+    .selected-movie-container {
+        background: transparent;
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 2rem 0;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .selected-movie-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 2rem;
+        color: inherit;
+    }
+    
+    .movie-details-grid {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 2rem;
+        align-items: start;
+    }
+    
+    .movie-info-section {
+        background: transparent;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-title {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 0.5rem;
+    }
+    
+    .cast-crew-item {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 0.5rem 1rem;
+        margin: 0.3rem 0;
+        border-radius: 5px;
+        border-left: 3px solid #667eea;
+        color: inherit;
+    }
+    
+    .overview-text {
+        line-height: 1.6;
+        color: inherit;
+        text-align: justify;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -151,6 +209,35 @@ def fetch_movie_details(movie_id):
         }
     except Exception as e:
         st.error(f"Error fetching movie details: {str(e)}")
+        return None
+
+def get_selected_movie_details(selected_movie):
+    """Get detailed information about the selected movie from our dataset"""
+    try:
+        # Find the movie in our dataset
+        movie_data = full_movies[full_movies['title'] == selected_movie].iloc[0]
+        
+        # Get poster and additional details from TMDB API
+        tmdb_details = fetch_movie_details(movie_data['movie_id'])
+        
+        # Extract cast, crew, and overview from our dataset
+        cast = movie_data['cast']
+        crew = movie_data['crew']
+        overview = movie_data['overview']
+        genres = movie_data['genres']
+        production_companies = movie_data['production_companies']
+        
+        return {
+            'title': selected_movie,
+            'cast': cast,
+            'crew': crew,
+            'overview': overview,
+            'genres': genres,
+            'production_companies': production_companies,
+            'tmdb_details': tmdb_details
+        }
+    except Exception as e:
+        st.error(f"Error getting movie details: {str(e)}")
         return None
 
 def recommend(movie):
@@ -185,7 +272,7 @@ def recommend(movie):
 
 def main():
     # Check if data is loaded
-    if movies is None or similarity is None:
+    if movies is None or similarity is None or full_movies is None:
         st.error("Failed to load movie data. Please ensure the artifacts folder contains the required pickle files.")
         return
     
@@ -217,14 +304,73 @@ def main():
         help="Start typing to search through our movie database"
     )
     
-    if st.button('Get Recommendations', key='recommend_btn'):
+    if st.button('Get Movie Details & Recommendations', key='recommend_btn'):
         st.markdown('</div>', unsafe_allow_html=True)
         
-        with st.spinner('Finding the perfect movies for you...'):
+        with st.spinner('Loading movie details and finding recommendations...'):
+            # Get selected movie details
+            selected_movie_details = get_selected_movie_details(selected_movie)
+            # Get recommendations
             recommended_movies = recommend(selected_movie)
         
+        if selected_movie_details:
+            # Display selected movie details
+            st.markdown('<div class="selected-movie-container">', unsafe_allow_html=True)
+            st.markdown(f'<h2 class="selected-movie-header"><i class="fas fa-star icon"></i> {selected_movie_details["title"]}</h2>', unsafe_allow_html=True)
+            
+            # Create a grid layout for movie details
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                # Movie poster
+                if selected_movie_details['tmdb_details'] and selected_movie_details['tmdb_details']['poster']:
+                    st.image(selected_movie_details['tmdb_details']['poster'], use_container_width=True, caption="")
+                else:
+                    st.image("https://via.placeholder.com/300x450?text=No+Poster", use_container_width=True, caption="")
+                
+                # Basic info
+                if selected_movie_details['tmdb_details']:
+                    if selected_movie_details['tmdb_details']['rating'] != 'N/A':
+                        st.markdown(f"<i class='fas fa-star icon'></i> **Rating: {selected_movie_details['tmdb_details']['rating']}/10**", unsafe_allow_html=True)
+                    
+                    if selected_movie_details['tmdb_details']['release_date'] != 'Unknown':
+                        st.markdown(f"<i class='fas fa-calendar-alt icon'></i> **Released: {selected_movie_details['tmdb_details']['release_date']}**", unsafe_allow_html=True)
+            
+            with col2:
+                # Overview
+                st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
+                st.markdown('<div class="info-title"><i class="fas fa-info-circle icon"></i> Overview</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="overview-text">{selected_movie_details["overview"]}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Cast
+                if selected_movie_details['cast']:
+                    st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
+                    st.markdown('<div class="info-title"><i class="fas fa-users icon"></i> Cast</div>', unsafe_allow_html=True)
+                    for actor in selected_movie_details['cast']:
+                        st.markdown(f'<div class="cast-crew-item">{actor}</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Crew (Directors)
+                if selected_movie_details['crew']:
+                    st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
+                    st.markdown('<div class="info-title"><i class="fas fa-video icon"></i> Directors</div>', unsafe_allow_html=True)
+                    for director in selected_movie_details['crew']:
+                        st.markdown(f'<div class="cast-crew-item">{director}</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Genres
+                if selected_movie_details['genres']:
+                    st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
+                    st.markdown('<div class="info-title"><i class="fas fa-tags icon"></i> Genres</div>', unsafe_allow_html=True)
+                    genres_text = ", ".join(selected_movie_details['genres'])
+                    st.markdown(f'<div class="overview-text">{genres_text}</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
         if recommended_movies:
-            st.markdown('<h2 class="recommendations-header"><i class="fas fa-trophy icon"></i> Here are your recommendations!</h2>', unsafe_allow_html=True)
+            st.markdown('<h2 class="recommendations-header"><i class="fas fa-trophy icon"></i> Related Movies You Might Like</h2>', unsafe_allow_html=True)
             
             # Display recommendations in a grid
             cols = st.columns(5)
