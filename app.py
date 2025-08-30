@@ -153,13 +153,6 @@ st.markdown("""
         align-items: start;
     }
     
-    .movie-info-section {
-        background: transparent;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        margin-bottom: 0.5rem;
-    }
     
     .info-title {
         font-size: 1.3rem;
@@ -351,10 +344,10 @@ def main():
                         st.markdown(f'<div class="cast-crew-item">{actor}</div>', unsafe_allow_html=True)
                     st.markdown('</div>', unsafe_allow_html=True)
                 
-                # Crew (Directors)
+                # Crew (Director)
                 if selected_movie_details['crew']:
                     st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
-                    st.markdown('<div class="info-title"><i class="fas fa-video icon"></i> Directors</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="info-title"><i class="fas fa-video icon"></i> Director</div>', unsafe_allow_html=True)
                     for director in selected_movie_details['crew']:
                         st.markdown(f'<div class="cast-crew-item">{director}</div>', unsafe_allow_html=True)
                     st.markdown('</div>', unsafe_allow_html=True)
