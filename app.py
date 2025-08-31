@@ -9,7 +9,7 @@ import re
 
 # Page configuration
 st.set_page_config(
-    page_title="CineMatch - Movie Recommender",
+    page_title="PerfectPitch - Movie Recommender",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -376,7 +376,7 @@ def main():
     # Header with cinematic style
     st.markdown("""
     <div style='text-align: center; padding: 2rem 0;'>
-        <h1 class="main-header"><i class="fas fa-film"></i> CineMatch</h1>
+        <h1 class="main-header"><i class="fas fa-film"></i> PerfectPitch</h1>
         <p class="subtitle">Your Personal Movie Connoisseur</p>
     </div>
     """, unsafe_allow_html=True)
@@ -572,14 +572,14 @@ def main():
     
     # About Section
     st.markdown("---")
-    st.markdown('<h2 class="section-header"><i class="fas fa-info-circle"></i> About CineMatch</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header"><i class="fas fa-info-circle"></i> About PerfectPitch</h2>', unsafe_allow_html=True)
     
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.markdown("### 🎯 What We Do")
         st.markdown("""
-        **CineMatch** is an AI-powered movie analysis and recommendation system that:
+        **PerfectPitch** is an AI-powered movie analysis and recommendation system that:
         
         - 🧠 Analyzes movie review sentiment with 88.9% accuracy
         - 🎬 Recommends similar movies using content-based filtering
@@ -615,7 +615,7 @@ def main():
     # Footer
     st.markdown("""
     <div class="footer">
-        <p><i class="fas fa-film"></i> CineMatch - AI Movie Analysis & Recommendations</p>
+        <p><i class="fas fa-film"></i> PerfectPitch - AI Movie Analysis & Recommendations</p>
         <p>Powered by Machine Learning & The Movie Database API</p>
     </div>
     """, unsafe_allow_html=True)
