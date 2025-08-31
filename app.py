@@ -4,6 +4,8 @@ import requests
 import pandas as pd
 from PIL import Image
 import io
+import joblib
+import re
 
 # Page configuration
 st.set_page_config(
@@ -19,11 +21,16 @@ try:
     similarity = pickle.load(open('artifacts/similarity.pkl', 'rb'))
     # Load the full movies data for detailed information
     full_movies = pickle.load(open('artifacts/full_movies.pkl', 'rb'))
+    # Load sentiment analysis model and vectorizer
+    sentiment_model = joblib.load('artifacts/sentiment_model.pkl')
+    tfidf_vectorizer = joblib.load('artifacts/tfidf_vectorizer.pkl')
 except Exception as e:
-    st.error(f"Error loading movie data: {str(e)}")
+    st.error(f"Error loading data: {str(e)}")
     movies = None
     similarity = None
     full_movies = None
+    sentiment_model = None
+    tfidf_vectorizer = None
 
 # Custom CSS for better styling
 st.markdown("""
@@ -263,6 +270,35 @@ def recommend(movie):
         st.error(f"Error getting recommendations: {str(e)}")
         return []
 
+def analyze_sentiment(review_text):
+    """Analyze the sentiment of a movie review"""
+    try:
+        if sentiment_model is None or tfidf_vectorizer is None:
+            return None, "Model not loaded"
+        
+        # Clean the text
+        cleaned_text = re.sub(r'[^\w\s]', '', review_text.lower())
+        
+        # Transform the text using the loaded vectorizer
+        text_features = tfidf_vectorizer.transform([cleaned_text])
+        
+        # Make prediction
+        prediction = sentiment_model.predict(text_features)[0]
+        probability = sentiment_model.predict_proba(text_features)[0]
+        
+        # Get confidence score
+        confidence = max(probability)
+        
+        sentiment_label = "Positive" if prediction == 1 else "Negative"
+        
+        return {
+            'sentiment': sentiment_label,
+            'confidence': confidence,
+            'prediction': prediction
+        }
+    except Exception as e:
+        return None, str(e)
+
 def main():
     # Check if data is loaded
     if movies is None or similarity is None or full_movies is None:
@@ -271,139 +307,239 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-header"><i class="fas fa-film"></i> Perfect Pitch</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Discover your next favorite movie with AI-powered recommendations</p>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">AI-Powered Movie Analysis & Recommendations</p>', unsafe_allow_html=True)
     
-    # Statistics
+    # Statistics Banner
     st.markdown('<div class="stats-container">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown('<div class="stat-item"><div class="stat-number">{}</div><div class="stat-label"><i class="fas fa-film icon"></i>Movies</div></div>'.format(len(movies)), unsafe_allow_html=True)
     with col2:
         st.markdown('<div class="stat-item"><div class="stat-number">5</div><div class="stat-label"><i class="fas fa-star icon"></i>Recommendations</div></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown('<div class="stat-item"><div class="stat-number">AI</div><div class="stat-label"><i class="fas fa-robot icon"></i>Powered</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-item"><div class="stat-number">88.9%</div><div class="stat-label"><i class="fas fa-robot icon"></i>AI Accuracy</div></div>', unsafe_allow_html=True)
+    with col4:
+        st.markdown('<div class="stat-item"><div class="stat-number">50K</div><div class="stat-label"><i class="fas fa-database icon"></i>Reviews</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Movie selection
-    st.markdown('<div class="selectbox-container">', unsafe_allow_html=True)
-    st.markdown("### <span class='icon-container'><i class='fas fa-bullseye icon'></i></span>Select a Movie", unsafe_allow_html=True)
-    st.markdown("Choose a movie you love, and we'll find similar ones you might enjoy!")
+    # Section 1: Movie Recommendations (FIRST)
+    st.markdown("---")
+    st.markdown("## 🎬 **Movie Recommendations**")
+    st.markdown("Discover similar movies based on your favorites")
     
+    # Movie selection
+    st.markdown("### Select a Movie")
     movie_list = movies['title'].values
     selected_movie = st.selectbox(
-        "Type or select a movie from the dropdown",
+        "Choose a movie you love:",
         movie_list,
         index=0 if len(movie_list) > 0 else None,
         help="Start typing to search through our movie database"
     )
     
-    if st.button('Get Movie Details & Recommendations', key='recommend_btn'):
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        with st.spinner('Loading movie details and finding recommendations...'):
+    # Get recommendations button
+    if st.button('🎯 Get Movie Recommendations', key='recommend_btn', type="primary", use_container_width=True):
+        with st.spinner('Finding similar movies...'):
             # Get selected movie details
             selected_movie_details = get_selected_movie_details(selected_movie)
             # Get recommendations
             recommended_movies = recommend(selected_movie)
+            
+            # Store in session state to preserve after other actions
+            st.session_state.selected_movie_details = selected_movie_details
+            st.session_state.recommended_movies = recommended_movies
+    
+    # Display recommendations (will be preserved)
+    if 'selected_movie_details' in st.session_state and st.session_state.selected_movie_details:
+        # Display selected movie details
+        st.markdown("### 🎬 Selected Movie Details")
         
-        if selected_movie_details:
-            # Display selected movie details
-            st.markdown('<div class="selected-movie-container">', unsafe_allow_html=True)
-            st.markdown(f'<h2 class="selected-movie-header"><i class="fas fa-star icon"></i> {selected_movie_details["title"]}</h2>', unsafe_allow_html=True)
+        # Create a grid layout for movie details
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            # Movie poster
+            if st.session_state.selected_movie_details['tmdb_details'] and st.session_state.selected_movie_details['tmdb_details']['poster']:
+                st.image(st.session_state.selected_movie_details['tmdb_details']['poster'], use_container_width=True, caption="")
+            else:
+                st.image("https://via.placeholder.com/300x450?text=No+Poster", use_container_width=True, caption="")
             
-            # Create a grid layout for movie details
-            col1, col2 = st.columns([1, 2])
+            # Basic info
+            if st.session_state.selected_movie_details['tmdb_details']:
+                if st.session_state.selected_movie_details['tmdb_details']['rating'] != 'N/A':
+                    st.markdown(f"⭐ **Rating: {st.session_state.selected_movie_details['tmdb_details']['rating']}/10**")
+                
+                if st.session_state.selected_movie_details['tmdb_details']['release_date'] != 'Unknown':
+                    st.markdown(f"📅 **Released: {st.session_state.selected_movie_details['tmdb_details']['release_date']}**")
+        
+        with col2:
+            # Overview
+            st.markdown("**📖 Overview:**")
+            st.markdown(f"{st.session_state.selected_movie_details['overview']}")
             
-            with col1:
+            # Cast
+            if st.session_state.selected_movie_details['cast']:
+                st.markdown("**👥 Cast:**")
+                cast_text = ", ".join(st.session_state.selected_movie_details['cast'][:5])  # Show first 5
+                st.markdown(cast_text)
+            
+            # Genres
+            if st.session_state.selected_movie_details['genres']:
+                st.markdown("**🏷️ Genres:**")
+                genres_text = ", ".join(st.session_state.selected_movie_details['genres'])
+                st.markdown(genres_text)
+    
+    if 'recommended_movies' in st.session_state and st.session_state.recommended_movies:
+        st.markdown("---")
+        st.markdown("### 🎯 Recommended Movies")
+        
+        # Display recommendations in a grid
+        cols = st.columns(5)
+        for idx, movie in enumerate(st.session_state.recommended_movies):
+            with cols[idx]:
                 # Movie poster
-                if selected_movie_details['tmdb_details'] and selected_movie_details['tmdb_details']['poster']:
-                    st.image(selected_movie_details['tmdb_details']['poster'], use_container_width=True, caption="")
+                if movie['details']['poster']:
+                    st.image(movie['details']['poster'], use_container_width=True, caption="")
                 else:
                     st.image("https://via.placeholder.com/300x450?text=No+Poster", use_container_width=True, caption="")
                 
-                # Basic info
-                if selected_movie_details['tmdb_details']:
-                    if selected_movie_details['tmdb_details']['rating'] != 'N/A':
-                        st.markdown(f"<i class='fas fa-star icon'></i> **Rating: {selected_movie_details['tmdb_details']['rating']}/10**", unsafe_allow_html=True)
-                    
-                    if selected_movie_details['tmdb_details']['release_date'] != 'Unknown':
-                        st.markdown(f"<i class='fas fa-calendar-alt icon'></i> **Released: {selected_movie_details['tmdb_details']['release_date']}**", unsafe_allow_html=True)
-            
-            with col2:
-                # Overview
-                st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
-                st.markdown('<div class="info-title"><i class="fas fa-info-circle icon"></i> Overview</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="overview-text">{selected_movie_details["overview"]}</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                # Movie title
+                st.markdown(f'**{movie["title"]}**')
                 
-                # Cast
-                if selected_movie_details['cast']:
-                    st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
-                    st.markdown('<div class="info-title"><i class="fas fa-users icon"></i> Cast</div>', unsafe_allow_html=True)
-                    for actor in selected_movie_details['cast']:
-                        st.markdown(f'<div class="cast-crew-item">{actor}</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                # Rating
+                if movie['details']['rating'] != 'N/A':
+                    st.markdown(f"⭐ {movie['details']['rating']}/10")
                 
-                # Crew (Director)
-                if selected_movie_details['crew']:
-                    st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
-                    st.markdown('<div class="info-title"><i class="fas fa-video icon"></i> Director</div>', unsafe_allow_html=True)
-                    for director in selected_movie_details['crew']:
-                        st.markdown(f'<div class="cast-crew-item">{director}</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                # Similarity score
+                similarity_percent = round(movie['similarity_score'] * 100, 1)
+                st.markdown(f"🎯 {similarity_percent}% similar")
                 
                 # Genres
-                if selected_movie_details['genres']:
-                    st.markdown('<div class="movie-info-section">', unsafe_allow_html=True)
-                    st.markdown('<div class="info-title"><i class="fas fa-tags icon"></i> Genres</div>', unsafe_allow_html=True)
-                    genres_text = ", ".join(selected_movie_details['genres'])
-                    st.markdown(f'<div class="overview-text">{genres_text}</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                if movie['details']['genres']:
+                    genres_text = ", ".join(movie['details']['genres'][:2])
+                    st.markdown(f"🏷️ {genres_text}")
+    
+        # Section 2: Review This Movie
+    st.markdown("---")
+    st.markdown("## 📝 **Review This Movie**")
+    st.markdown(f"Share your thoughts about **{selected_movie}**")
+    
+    # Create two columns for better layout
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        # Review text area
+        movie_review = st.text_area(
+            "Your review:",
+            value=st.session_state.get('sample_review', ''),
+            placeholder=f"Write your review about {selected_movie}...",
+            height=120,
+            key="movie_review"
+        )
         
-        if recommended_movies:
-            st.markdown('<h2 class="recommendations-header"><i class="fas fa-trophy icon"></i> Related Movies You Might Like</h2>', unsafe_allow_html=True)
-            
-            # Display recommendations in a grid
-            cols = st.columns(5)
-            for idx, movie in enumerate(recommended_movies):
-                with cols[idx]:
-                    # Movie poster
-                    if movie['details']['poster']:
-                        st.image(movie['details']['poster'], use_container_width=True, caption="")
-                    else:
-                        st.image("https://via.placeholder.com/300x450?text=No+Poster", use_container_width=True, caption="")
+        # Review analysis button
+        if st.button("🔍 Analyze My Review", key="movie_review_btn", use_container_width=True, type="primary"):
+            if movie_review.strip():
+                with st.spinner("Analyzing your movie review..."):
+                    result = analyze_sentiment(movie_review)
+                
+                if isinstance(result, dict):
+                    st.markdown("### 📊 Review Analysis Results")
                     
-                    # Movie title
-                    st.markdown(f'<div class="movie-title">{movie["title"]}</div>', unsafe_allow_html=True)
+                    # Display results
+                    result_col1, result_col2 = st.columns([1, 1])
                     
-                    # Rating
-                    if movie['details']['rating'] != 'N/A':
-                        st.markdown(f"<i class='fas fa-star icon'></i> **{movie['details']['rating']}/10**", unsafe_allow_html=True)
+                    with result_col1:
+                        if result['sentiment'] == 'Positive':
+                            st.success(f"😊 **Positive Sentiment**")
+                        else:
+                            st.error(f"😞 **Negative Sentiment**")
+                        
+                        confidence_percent = round(result['confidence'] * 100, 1)
+                        st.metric("Confidence Score", f"{confidence_percent}%")
                     
-                    # Similarity score
-                    similarity_percent = round(movie['similarity_score'] * 100, 1)
-                    st.markdown(f"<i class='fas fa-bullseye icon'></i> **{similarity_percent}%** similar", unsafe_allow_html=True)
+                    with result_col2:
+                        if result['sentiment'] == 'Positive':
+                            st.success(f"🎉 **Great choice!** You really enjoyed {selected_movie}!")
+                        else:
+                            st.warning(f"📝 **Honest feedback!** Your review of {selected_movie} provides valuable insights.")
                     
-                    # Genres
-                    if movie['details']['genres']:
-                        genres_text = ", ".join(movie['details']['genres'][:3])
-                        st.markdown(f"<i class='fas fa-tags icon'></i> {genres_text}", unsafe_allow_html=True)
-                    
-                    # Release date
-                    if movie['details']['release_date'] != 'Unknown':
-                        st.markdown(f"<i class='fas fa-calendar-alt icon'></i> {movie['details']['release_date'][:4]}", unsafe_allow_html=True)
-        else:
-            st.warning("No recommendations found. Please try another movie.")
-    else:
-        st.markdown('</div>', unsafe_allow_html=True)
+                    # Analysis details
+                    st.info(f"**AI Analysis:** The model predicts this review as **{result['sentiment'].lower()}** with {confidence_percent}% confidence.")
+                else:
+                    st.error(f"Error analyzing sentiment: {result}")
+            else:
+                st.warning("Please write a review to analyze.")
+    
+    with col2:
+        # Sample reviews section
+        st.markdown("### 💡 Try Sample Reviews")
+        st.markdown("Click any sample to test the system:")
+        
+        sample_reviews = [
+            "This movie was absolutely amazing! I loved every minute of it.",
+            "Terrible film, waste of time and money.",
+            "The acting was good but the plot was confusing.",
+            "A masterpiece that will be remembered for generations."
+        ]
+        
+        for i, sample in enumerate(sample_reviews):
+            if st.button(f"Sample {i+1}: {sample[:25]}...", key=f"sample_{i}"):
+                st.session_state.sample_review = sample
+                st.rerun()
+        
+        # Clear button
+        if st.button("🗑️ Clear Review", key="clear_review"):
+            st.session_state.sample_review = ""
+            st.rerun()
+    
+    # About Section
+    st.markdown("---")
+    st.markdown("## 📊 **About Perfect Pitch**")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown("### 🎯 What We Do")
+        st.markdown("""
+        **Perfect Pitch** is an AI-powered movie analysis and recommendation system that:
+        
+        - 🧠 Analyzes movie review sentiment with 88.9% accuracy
+        - 🎬 Recommends similar movies using content-based filtering
+        - 📝 Provides personalized movie insights
+        - 🚀 Uses machine learning for intelligent suggestions
+        """)
+    
+    with col2:
+        st.markdown("### 📈 Model Performance")
+        st.markdown("""
+        **Sentiment Analysis Model:**
+        - **Accuracy**: 88.9%
+        - **Training Data**: 50,000 IMDB reviews
+        - **Model**: Logistic Regression + TF-IDF
+        - **Features**: 5,000 max features
+        
+        **Recommendation System:**
+        - **Algorithm**: Cosine Similarity
+        - **Features**: Genres, tags, keywords
+        - **Output**: Top 5 similar movies
+        """)
+    
+    st.markdown("---")
+    st.markdown("### 🛠️ Technical Stack")
+    st.markdown("""
+    - **Frontend**: Streamlit
+    - **ML Framework**: Scikit-learn
+    - **Data Processing**: Pandas, NumPy
+    - **Text Analysis**: TF-IDF Vectorization
+    - **Similarity**: Cosine Similarity Algorithm
+    """)
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666; padding: 2rem;'>
-        <p><i class="fas fa-film"></i> Perfect Pitch - AI Movie Recommendations</p>
+        <p><i class="fas fa-film"></i> Perfect Pitch - AI Movie Analysis & Recommendations</p>
         <p>Powered by Machine Learning & The Movie Database API</p>
     </div>
     """, unsafe_allow_html=True)
