@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  perfectpitch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: perfectpitch-app
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Optional: Mount artifacts as volume for easier updates
+    # volumes:
+    #   - ./artifacts:/app/artifacts:ro
+    networks:
+      - perfectpitch-network
+
+networks:
+  perfectpitch-network:
+    driver: bridge
