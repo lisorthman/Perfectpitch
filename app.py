@@ -431,9 +431,9 @@ def main():
         with col1:
             # Movie poster
             if st.session_state.selected_movie_details['tmdb_details'] and st.session_state.selected_movie_details['tmdb_details']['poster']:
-                st.image(st.session_state.selected_movie_details['tmdb_details']['poster'], use_container_width=True, caption="")
+                st.image(st.session_state.selected_movie_details['tmdb_details']['poster'], use_column_width=True, caption="")
             else:
-                st.image("https://via.placeholder.com/300x450?text=No+Poster", use_container_width=True, caption="")
+                st.image("https://via.placeholder.com/300x450?text=No+Poster", use_column_width=True, caption="")
             
             # Basic info
             if st.session_state.selected_movie_details['tmdb_details']:
@@ -473,9 +473,9 @@ def main():
                 
                 # Movie poster
                 if movie['details']['poster']:
-                    st.image(movie['details']['poster'], use_container_width=True, caption="")
+                    st.image(movie['details']['poster'], use_column_width=True, caption="")
                 else:
-                    st.image("https://via.placeholder.com/300x450?text=No+Poster", use_container_width=True, caption="")
+                    st.image("https://via.placeholder.com/300x450?text=No+Poster", use_column_width=True, caption="")
                 
                 # Movie title
                 st.markdown(f'<div class="movie-title">{movie["title"]}</div>', unsafe_allow_html=True)
